@@ -1,0 +1,196 @@
+@startuml c4_class
+allowmixing
+skinparam linetype ortho
+title C4 - Code Level Diagram (ФАЛТ.конф)
+
+package usecases {
+    note as usecases_description
+        В этом разделе реализуется бизнес-логика приложения.
+        Use Cases взаимодействуют с доменными объектами из слоя Entities.
+    end note
+
+    ' Абстрактный базовый use case
+    abstract class AbstractUseCase {
+        + execute(*args, **kwargs) : Any
+    }
+
+    ' Use case для создания нового признания
+    class CreateConfessionUseCase {
+        - _confession_repository: ConfessionRepositoryProtocol
+        + __init__(confession_repository: ConfessionRepositoryProtocol) : None
+        + execute(confession_dto: ConfessionDTO) : None
+    }
+    note bottom of CreateConfessionUseCase
+        Обрабатывает данные от пользователя, создаёт объект Confession
+        с вложениями и тегами и сохраняет его через репозиторий.
+    end note
+
+    ' Use case для модерации признания
+    class ModerateConfessionUseCase {
+        - _moderation_gateway: ModerationGatewayProtocol
+        - _confession_repository: ConfessionRepositoryProtocol
+        + __init__(moderation_gateway: ModerationGatewayProtocol, confession_repository: ConfessionRepositoryProtocol) : None
+        + execute(confession_dto: ConfessionDTO) : bool
+    }
+    note bottom of ModerateConfessionUseCase
+        Проводит модерацию признания, обновляя его статус (PENDING, APPROVED, REJECTED)
+        с помощью LLM или ручного контроля.
+    end note
+
+    ' Use case для публикации признания в Telegram
+    class PublishConfessionUseCase {
+        - _telegram_gateway: TelegramGatewayProtocol
+        - _confession_repository: ConfessionRepositoryProtocol
+        + __init__(telegram_gateway: TelegramGatewayProtocol, confession_repository: ConfessionRepositoryProtocol) : None
+        + execute(confession_dto: ConfessionDTO) : None
+    }
+    note bottom of PublishConfessionUseCase
+        Отправляет одобренное признание в Telegram-канал через TelegramGateway.
+        Если признание включает опрос, вызывается send_poll, и возвращаемый poll_message_id сохраняется.
+    end note
+
+    ' Use case для обновления реакций
+    class UpdateReactionsUseCase {
+        - _telegram_gateway: TelegramGatewayProtocol
+        - _reaction_repository: ReactionRepositoryProtocol
+        + __init__(telegram_gateway: TelegramGatewayProtocol, reaction_repository: ReactionRepositoryProtocol) : None
+        + execute() : None
+    }
+    note bottom of UpdateReactionsUseCase
+        Периодически опрашивает Telegram API для получения актуальных данных о реакциях
+        к опубликованным признаниям и обновляет соответствующие записи в репозитории.
+    end note
+
+    AbstractUseCase <|-- CreateConfessionUseCase
+    AbstractUseCase <|-- ModerateConfessionUseCase
+    AbstractUseCase <|-- PublishConfessionUseCase
+    AbstractUseCase <|-- UpdateReactionsUseCase
+}
+
+' Примеры взаимоотношений между классами:
+CreateConfessionUseCase *-- "1" ConfessionRepositoryProtocol : _confession_repository
+PublishConfessionUseCase *-- "1" ConfessionRepositoryProtocol : _confession_repository
+ModerateConfessionUseCase *-- "1" ModerationGatewayProtocol : _moderation_gateway
+UpdateReactionsUseCase o-- "1" ReactionRepositoryProtocol : _reaction_repository
+UpdateReactionsUseCase o-- "1" TelegramGatewayProtocol : _telegram_gateway
+
+
+
+
+
+package entities {
+    note as entities_description
+        Модель доменных сущностей для ФАЛТ.конф.
+    end note
+
+    enum ConfessionStatus {
+        PENDING
+        APPROVED
+        REJECTED
+        PUBLISHED
+    }
+
+    enum AttachmentType {
+        IMAGE
+        VIDEO
+        AUDIO
+        MUSIC
+        DOCUMENT
+        OTHER
+    }
+
+    class Confession {
+        + id: int
+        + content: string
+        + created_at: datetime
+        + status: ConfessionStatus
+        + attachments: List<Attachment>
+        + tags: List<Tag>
+        + poll: Poll [0..1]           ' Связь с опросом, если он создан
+    }
+
+    class Attachment {
+        + id: int
+        + url: string
+        + type: AttachmentType
+        + uploaded_at: datetime
+        + caption: string [0..1]
+    }
+
+    ' Сущность опроса
+    class Poll {
+        + id: int
+        + question: string              ' Тема опроса (вопрос)
+        + allows_multiple_answers: bool ' Разрешен ли множественный выбор
+        + type: string                  ' Тип опроса: "regular" или "quiz"
+        + correct_option_id: int [0..1]  ' (Опционально) корректный ответ для quiz режима
+        + explanation: string [0..1]     ' (Опционально) пояснение для quiz режима
+        + open_period: int [0..1]        ' (Опционально) период в секундах, в течение которого опрос открыт
+        + poll_message_id: string [0..1] ' ID сообщения с опросом, полученный через Telegram API
+        + created_at: datetime
+        + options: List<PollOption>
+    }
+
+    class PollOption {
+        + id: int
+        + text: string
+        + vote_count: int
+    }
+
+    class ModerationLog {
+        + id: int
+        + confession_id: int
+        + decision: ConfessionStatus
+        + moderator: string
+        + reason: string [0..1]
+        + timestamp: datetime
+    }
+
+    class PublishedRecord {
+        + id: int
+        + confession_id: int
+        + telegram_message_id: string
+        + channel_id: string
+        + published_at: datetime
+        + discussion_thread_id: string [0..1]
+    }
+
+    class Tag {
+        + id: int
+        + name: string
+    }
+
+    class Comment {
+        + id: int
+        + confession_id: int
+        + content: string
+        + created_at: datetime
+        + reply_to: int [0..1] ' ID родительского комментария для вложенности
+    }
+
+    ' Новая сущность для хранения реакций
+    class Reaction {
+        + id: int
+        + confession_id: int
+        + emoji: string        ' Символ реакции (например, "👍")
+        + count: int           ' Количество поставленных реакций данного типа
+        + last_updated: datetime ' Время последнего обновления информации о реакции
+    }
+
+    ' Ассоциации:
+    Confession "0..1" --> "1..*" Attachment : содержит
+    Confession "1" --> "0..*" ModerationLog : имеет
+    Confession "1" --> "0..1" PublishedRecord : публикуется
+    Confession "1" --> "0..*" Tag : помечается
+    Confession "1" --> "0..*" Comment : имеет
+    Confession "0..1" --> "0..1" Poll : включает
+    Poll "1" --> "1..*" PollOption : содержит варианты
+
+    ' Связь для реакции: одно признание может иметь много реакций разных типов
+    Confession "1" --> "0..*" Reaction : имеет
+}
+
+' Уровневые связи: Use Cases используют доменные объекты из слоя Entities
+usecases -down----> entities : использует доменные объекты
+
+@enduml
