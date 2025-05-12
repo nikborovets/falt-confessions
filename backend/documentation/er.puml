@@ -1,0 +1,107 @@
+@startuml er
+!define ERBK #black
+!define ERBF #ffffff
+
+class Confession {
+    + id: int [PK]
+    + content: string
+    + created_at: datetime
+    + status_id: int [FK]
+}
+
+class ConfessionStatus {
+    + id: int [PK]
+    + name: string
+}
+
+class Attachment {
+    + id: int [PK]
+    + confession_id: int [FK]
+    + url: string
+    + type_id: int [FK]
+    + uploaded_at: datetime
+    + caption: string [0..1]
+}
+
+class AttachmentType {
+    + id: int [PK]
+    + name: string
+}
+
+class Poll {
+    + id: int [PK]
+    + confession_id: int [FK, 0..1]
+    + question: string
+    + allows_multiple_answers: bool
+    + type: string
+    + correct_option_id: int [0..1]
+    + explanation: string [0..1]
+    + open_period: int [0..1]
+    + poll_message_id: string [0..1]
+    + created_at: datetime
+}
+
+class PollOption {
+    + id: int [PK]
+    + poll_id: int [FK]
+    + text: string
+    + vote_count: int
+}
+
+class ModerationLog {
+    + id: int [PK]
+    + confession_id: int [FK]
+    + decision_id: int [FK]
+    + moderator: string
+    + reason: string [0..1]
+    + timestamp: datetime
+}
+
+class PublishedRecord {
+    + id: int [PK]
+    + confession_id: int [FK]
+    + telegram_message_id: string
+    + channel_id: string
+    + published_at: datetime
+    + discussion_thread_id: string [0..1]
+}
+
+class Tag {
+    + id: int [PK]
+    + name: string
+}
+
+class ConfessionTag {
+    + confession_id: int [PK, FK]
+    + tag_id: int [PK, FK]
+}
+
+class Comment {
+    + id: int [PK]
+    + confession_id: int [FK]
+    + content: string
+    + created_at: datetime
+    + reply_to: int [0..1]
+}
+
+class Reaction {
+    + id: int [PK]
+    + confession_id: int [FK]
+    + emoji: string
+    + count: int
+    + last_updated: datetime
+}
+
+ConfessionStatus "1" --|> "0..*" Confession : status_id (PK→FK)
+Confession "1" --|> "0..*" Attachment : confession_id (PK→FK)
+Confession "1" --|> "0..*" ModerationLog : confession_id (PK→FK)
+Confession "1" --|> "0..*" PublishedRecord : confession_id (PK→FK)
+Confession "1" --|> "0..*" Comment : confession_id (PK→FK)
+Confession "1" --|> "0..*" Reaction : confession_id (PK→FK)
+Confession "1" --|> "0..*" ConfessionTag : confession_id (PK→FK)
+Poll "1" --|> "0..*" PollOption : poll_id (PK→FK)
+AttachmentType "1" --|> "0..*" Attachment : type_id (PK→FK)
+ConfessionStatus "1" --|> "0..*" ModerationLog : decision_id (PK→FK)
+Tag "1" --|> "0..*" ConfessionTag : tag_id (PK→FK)
+
+@enduml
