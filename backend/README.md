@@ -43,46 +43,52 @@ docker-compose up -d
 ### 2) Entities (`src/entities`)
 
 * [ ] Определить классы:
-
   * `Confession`, `Poll`, `Attachment`, `Reaction`, `Tag`, `Comment`, `ModerationLog`, `PublishedRecord`
-* [ ] Добавить `Enum`-ы:
 
+* [ ] Добавить `Enum`-ы:
   * `ConfessionStatus`, `AttachmentType`
+
 * [ ] Написать базовые unit-тесты для валидации полей и конструкторов
 
 ### 3) Use Cases (`src/use_cases`)
 
 * [ ] Реализовать:
+  * [ ] `CreateConfessionUseCase`
+  * [ ] `ModerateConfessionUseCase`
+  * [ ] `PublishConfessionUseCase`
+  * [ ] `UpdateReactionsUseCase`
 
-  * `CreateConfessionUseCase`
-  * `ModerateConfessionUseCase`
-  * `PublishConfessionUseCase`
-  * `UpdateReactionsUseCase`
 * [ ] Написать unit-тесты для каждого интерактора (AAA, мок-объекты)
 
 ### 4) Interface Adapters (`src/interface_adapters`)
 
 * [ ] Определить Protocol-интерфейсы:
+  * [ ] `ConfessionRepository`, 
+  * [ ] `ModerationGateway`, 
+  * [ ] `TelegramGateway`, 
+  * [ ] `ReactionRepository`
 
-  * `ConfessionRepository`, `ModerationGateway`, `TelegramGateway`, `ReactionRepository`
 * [ ] Создать DTO-классы (`Pydantic` или `dataclasses`):
+  * [ ] `ConfessionDTO`, 
+  * [ ] `PollDTO`, 
+  * [ ] `AttachmentDTO`, 
+  * [ ] `ReactionDTO` и т.д.
 
-  * `ConfessionDTO`, `PollDTO`, `AttachmentDTO`, `ReactionDTO` и т.д.
 * [ ] Определить Controller-классы (методы без реализации)
 
 ### 5) Frameworks and Drivers (`src/frameworks_and_drivers`)
 
 * [ ] Настроить SQLAlchemy и Alembic:
-
   * Базовые модели и миграции
+
 * [ ] Реализация репозиториев на SQLAlchemy:
+  * [ ] `ConfessionRepository`, 
+  * [ ] `ReactionRepository` и пр.
 
-  * `ConfessionRepository`, `ReactionRepository` и пр.
 * [ ] Telegram-шлюз (aiogram или python-telegram-bot):
-
   * Методы для отправки сообщений и опросов
-* [ ] FastAPI:
 
+* [ ] FastAPI:
   * Pydantic-схемы запросов/ответов
   * Роутеры, middleware, dependency-injection контроллеров
 
@@ -90,14 +96,14 @@ docker-compose up -d
 
 * [ ] Настроить `pytest` и `pytest-asyncio`
 * [ ] Написать unit-тесты для:
+  * [ ] Entities
+  * [ ] Use Cases
+  * [ ] Interface Adapters (мок-репозитории)
 
-  * Entities
-  * Use Cases
-  * Interface Adapters (мок-репозитории)
 * [ ] Написать integration-тесты для:
+  * [ ] Репозиториев (база + миграции)
+  * [ ] Полного сценария (создание → модерация → публикация)
 
-  * Репозиториев (база + миграции)
-  * Полного сценария (создание → модерация → публикация)
 * [ ] Достичь coverage ≥ 75% и добавить отчёт Cobertura/XML
 
 ### CI/CD
