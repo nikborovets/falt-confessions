@@ -10,7 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.entities.enums import ConfessionStatus
 from src.frameworks_and_drivers.db.database import get_db
 from src.frameworks_and_drivers.dependencies import get_confession_controller
-from src.frameworks_and_drivers.rest_api.schemas import ConfessionRequest, ConfessionResponse
+from src.frameworks_and_drivers.rest_api.schemas import (
+    ConfessionRequest,
+    ConfessionResponse,
+    StatusUpdateRequest,
+)
 from src.interface_adapters.controllers import ConfessionController
 from src.interface_adapters.dto import (
     AttachmentDTO,
@@ -111,18 +115,18 @@ async def get_confession(
 
 @router.get("/", response_model=List[ConfessionResponse])
 async def list_confessions(
-    status: Optional[ConfessionStatus] = Query(None, description="Фильтр по статусу признания"),
+    status_filter: Optional[ConfessionStatus] = Query(None, alias="status", description="Фильтр по статусу признания"),
     confession_controller: ConfessionController = Depends(get_confession_controller),
 ) -> List[ConfessionResponse]:
     """
     Получает список признаний, опционально отфильтрованный по статусу.
     """
-    logger.info(f"Listing confessions with status {status}")
+    logger.info(f"Listing confessions with status {status_filter}")
     
     # Пытаемся получить список признаний
     try:
-        confession_dtos = await confession_controller.list_confessions(status)
-        return [ConfessionResponse.model_validate(dto.model_dump()) for dto in confession_dtos]
+        confession_dtos = await confession_controller.list_by_status(status_filter)
+        return [ConfessionResponse.model_validate(confession) for confession in confession_dtos]
     except Exception as e:
         logger.error(f"Error listing confessions: {str(e)}")
         raise HTTPException(
@@ -204,4 +208,34 @@ async def publish_confession(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error publishing confession: {str(e)}",
-        ) 
+        )
+
+
+@router.patch("/{confession_id}/status", response_model=ConfessionResponse)
+async def update_confession_status(
+    confession_id: int,
+    status_update: StatusUpdateRequest,
+    confession_controller: ConfessionController = Depends(get_confession_controller),
+) -> ConfessionResponse:
+    """
+    Обновляет статус признания.
+    """
+    logger.info(f"Updating status for confession with ID {confession_id} to {status_update.status}")
+    
+    # Обновляем статус
+    try:
+        result_dto = await confession_controller.update_status(confession_id, status_update.status)
+        if not result_dto:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Confession with ID {confession_id} not found",
+            )
+        return ConfessionResponse.model_validate(result_dto)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating confession status: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating confession status: {str(e)}",
+        )

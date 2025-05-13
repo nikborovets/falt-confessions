@@ -4,7 +4,7 @@ Pydantic-схемы для API признаний и связанных сущн
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from src.entities.enums import AttachmentType, ConfessionStatus
 
@@ -58,7 +58,7 @@ class PollRequest(BaseModel):
     """Схема запроса для опроса."""
     
     question: str = Field(..., min_length=1, max_length=255)
-    options: List[PollOptionRequest] = Field(..., min_items=2, max_items=10)
+    options: List[PollOptionRequest] = Field(..., min_length=2, max_length=10)
     allows_multiple_answers: bool = False
     type: str = "regular"
     correct_option_id: Optional[int] = None
@@ -78,6 +78,18 @@ class PollResponse(BaseModel):
     explanation: Optional[str] = None
     open_period: Optional[int] = None
     created_at: datetime
+
+
+class VoteRequest(BaseModel):
+    """Схема запроса для голосования в опросе."""
+    
+    option_id: int = Field(..., description="ID варианта ответа")
+
+
+class StatusUpdateRequest(BaseModel):
+    """Схема запроса для обновления статуса признания."""
+    
+    status: ConfessionStatus = Field(..., description="Новый статус признания")
 
 
 class ConfessionRequest(BaseModel):
@@ -100,7 +112,4 @@ class ConfessionResponse(BaseModel):
     tags: List[TagResponse] = Field(default_factory=list)
     poll: Optional[PollResponse] = None
     
-    class Config:
-        """Настройки схемы."""
-        
-        from_attributes = True 
+    model_config = ConfigDict(from_attributes=True)

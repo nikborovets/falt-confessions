@@ -11,8 +11,10 @@ from src.frameworks_and_drivers.rest_api.schemas.confession import (
     PollOptionResponse,
     PollRequest,
     PollResponse,
+    StatusUpdateRequest,
     TagRequest,
     TagResponse,
+    VoteRequest,
 )
 
 __all__ = [
@@ -24,6 +26,8 @@ __all__ = [
     "PollResponse",
     "PollOptionRequest",
     "PollOptionResponse",
+    "StatusUpdateRequest",
     "TagRequest",
     "TagResponse",
-] 
+    "VoteRequest",
+]

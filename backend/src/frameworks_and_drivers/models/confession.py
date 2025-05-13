@@ -160,4 +160,5 @@ class CommentModel(Base):
 
     # Отношения
     confession = relationship("ConfessionModel", back_populates="comments")
-    replies = relationship("CommentModel", backref=ForeignKey("reply_to")) 
+    replies = relationship("CommentModel", back_populates="parent", remote_side=[id])
+    parent = relationship("CommentModel", back_populates="replies", remote_side=[reply_to]) 

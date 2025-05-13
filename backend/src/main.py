@@ -2,6 +2,7 @@
 Основной файл приложения FastAPI.
 """
 import os
+from contextlib import asynccontextmanager
 from typing import Any, Dict
 
 from fastapi import FastAPI
@@ -11,6 +12,18 @@ from loguru import logger
 from src.frameworks_and_drivers.rest_api.routers import confession_router, poll_router
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Обработчик жизненного цикла приложения."""
+    # Код, выполняемый при запуске приложения
+    logger.info("Starting ФАЛТ.конф API")
+    
+    yield  # Здесь приложение работает
+    
+    # Код, выполняемый при остановке приложения
+    logger.info("Shutting down ФАЛТ.конф API")
+
+
 def create_app() -> FastAPI:
     """Создает и настраивает приложение FastAPI."""
     # Создаем приложение
@@ -18,6 +31,7 @@ def create_app() -> FastAPI:
         title="ФАЛТ.конф API",
         description="API для системы анонимных признаний ФАЛТ.конф",
         version="0.1.0",
+        lifespan=lifespan,
     )
     
     # Настраиваем CORS
@@ -30,8 +44,8 @@ def create_app() -> FastAPI:
     )
     
     # Регистрируем роутеры
-    app.include_router(confession_router)
-    app.include_router(poll_router)
+    app.include_router(confession_router, prefix="/api")
+    app.include_router(poll_router, prefix="/api")
     
     # Добавляем обработчик для проверки работоспособности
     @app.get("/health")
@@ -41,17 +55,6 @@ def create_app() -> FastAPI:
             "status": "ok",
             "version": app.version,
         }
-    
-    # Обработчики событий жизненного цикла приложения
-    @app.on_event("startup")
-    async def startup_event() -> None:
-        """Обработчик запуска приложения."""
-        logger.info("Starting ФАЛТ.конф API")
-    
-    @app.on_event("shutdown")
-    async def shutdown_event() -> None:
-        """Обработчик остановки приложения."""
-        logger.info("Shutting down ФАЛТ.конф API")
     
     return app
 
@@ -72,4 +75,4 @@ if __name__ == "__main__":
         host=host,
         port=port,
         reload=os.getenv("DEBUG", "False").lower() == "true",
-    ) 
+    )
