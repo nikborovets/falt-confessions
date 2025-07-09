@@ -1,0 +1,72 @@
+version: '3.8'
+
+volumes:
+  postgres_data:
+  zookeeper_data:
+  kafka_data:
+
+x-app: &app
+  logging:
+    driver: "json-file"
+    options:
+      max-file: "3"
+      max-size: "10m"
+  env_file:
+    - ./.env
+  restart: always
+
+services:
+  postgres:
+    <<: *app
+    image: postgres:14.0
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-falt_conf}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    <<: *app
+    container_name: fastapi
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ${API_CONTAINER_STAGE:-development}
+    volumes:
+      - .:/app
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DEBUG=${DEBUG:-True}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-falt_conf}
+      - POSTGRES_URI=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-falt_conf}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHANNEL_ID=${TELEGRAM_CHANNEL_ID:-}
+      - MODERATION_API_KEY=${MODERATION_API_KEY:-}
+      - MODERATION_API_URL=${MODERATION_API_URL:-https://api.openai.com/v1/moderations}
+    restart: always
+
+  nginx:
+    <<: *app
+    build:
+      context: ./nginx
+      dockerfile: ./Dockerfile
+    ports:
+      - "${NGINX_PORT:-80}:80"
+    depends_on:
+      - api

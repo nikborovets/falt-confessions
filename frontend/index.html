@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Физтех Confessions</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <span class="header-ru">фалт</span><span class="header-en">.conf</span>
+    </header>
+    <main>
+      <section class="main-content" id="confess-section">
+        <textarea class="confession-input" placeholder="Введите свой Confession"></textarea>
+        <div class="icon-row">
+          <label>
+            <input type="file" accept="image/png,image/jpeg,image/gif" multiple style="display:none" />
+            <img class="icon-bright" src="https://ext.same-assets.com/2332355134/3783633550.svg" alt="image" />
+          </label>
+          <label>
+            <input type="file" accept=".avi,.mp4,.3gp,.mpeg,.mov,.flv,.wmv" multiple style="display:none" />
+            <img class="icon-bright" src="https://ext.same-assets.com/2332355134/2563901416.svg" alt="video" />
+          </label>
+          <label>
+            <input type="file" accept=".mp3" multiple style="display:none" />
+            <img class="icon-bright" src="https://ext.same-assets.com/2332355134/548389142.svg" alt="audio" />
+          </label>
+          <label>
+            <input type="file" multiple style="display:none" />
+            <img class="icon-bright" src="https://ext.same-assets.com/2332355134/260646423.svg" alt="file" />
+          </label>
+
+          <label>
+            <input type="button" class="poll-btn" style="display:none" />
+            <img class="icon-bright poll-toggle-icon" src="https://ext.same-assets.com/2332355134/4061061103.svg" alt="poll" title="Голосование" />
+          </label>
+          <a href="#" class="track-posts"><img class="icon-bright" src="https://ext.same-assets.com/2332355134/2320907649.svg" alt="track posts" /></a>
+
+        </div>
+        <section id="poll-section" style="display:none;">
+          <div class="poll-form-block">
+            <div class="poll-form-rows">
+              <div class="poll-row">
+                <span class="poll-label">Тема опроса</span>
+                <input type="text" class="poll-topic" placeholder="" />
+                <button class="poll-remove-btn" title="Удалить опрос" type="button">🗑️</button>
+              </div>
+              <div class="poll-row">
+                <span class="poll-label">Варианты ответа</span>
+                <button class="poll-close-answers-btn" title="Скрыть ответы" type="button">✖</button>
+              </div>
+              <div class="poll-answers-list" id="poll-answers-list"></div>
+              <div class="poll-add-row">
+                <input type="text" class="poll-answer-input" placeholder="Добавить вариант" />
+                <button class="poll-add-btn" type="button">Добавить вариант</button>
+              </div>
+              <div class="poll-options">
+                <label><input type="checkbox" class="poll-anon"/>Анонимный опрос</label>
+                <label><input type="checkbox" class="poll-multi"/>Выбор нескольких вариантов</label>
+                <label><input type="checkbox" class="poll-no-revoke"/>Запретить отмену голоса</label>
+              </div>
+            </div>
+          </div>
+        </section>
+        <button class="submit-btn">Отправить</button>
+      </section>
+      <section class="thank-you-page" id="thank-section" style="display:none;">
+        <div class="thanks-content">
+          <h1 class="thanks-header">Спасибо за пост</h1>
+          <h3 class="thanks-subheader">Смешная шутка специально для тебя</h3>
+          <div class="thanks-main">
+            <pre class="thanks-joke">Шутки  не  будет</pre>
+            <img class="thanks-img" src="https://ext.same-assets.com/1465829406/1800008074.jpeg" alt="thanks-anime" />
+          </div>
+        </div>
+        <div class="thanks-buttons">
+          <a href="#" id="history-btn"><button class="btn btn-outline-info btn-block">Посмотреть историю постов</button></a>
+          <a href="#" id="back-btn"><button class="btn btn-outline-primary btn-block">Обратно на главную страницы</button></a>
+        </div>
+      </section>
+      <section class="history-page" id="history-section" style="display:none;">
+        <div class="history-content">
+          <h1 class="history-header">История ваших последних 100 постов</h1>
+          <h6 class="history-subheader">История хранится локально на вашем устройстве</h6>
+          <div id="history-list"></div>
+          <button class="clear-history-btn" id="history-clear-btn">Очистить историю</button>
+        </div>
+        <div class="history-buttons">
+          <a href="#" id="history-back-btn"><button class="btn btn-outline-primary btn-block">Обратно на главную страницы</button></a>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

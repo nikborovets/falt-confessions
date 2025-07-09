@@ -1,0 +1,309 @@
+@startuml c4_class
+allowmixing
+skinparam linetype ortho
+title C4 - Code Level Diagram (ФАЛТ.конф)
+
+package frameworks_and_drivers {
+    note as frameworks_description
+        Инфраструктурный слой: REST API (FastAPI), Pydantic-схемы, репозитории, гейтвеи, ORM-модели, миграции.
+    end note
+
+    package rest_api {
+        package routers {
+            class ConfessionRouter {
+                + post_confession(request: ConfessionRequest) : ConfessionResponse
+                + get_confession(id: int) : ConfessionResponse
+                + list_confessions(status: ConfessionStatus) : List<ConfessionResponse>
+            }
+            class PollRouter {
+                + post_poll(request: PollRequest) : PollResponse
+            }
+        }
+        package schemas {
+            class ConfessionRequest {}
+            class ConfessionResponse {}
+            class PollRequest {}
+            class PollResponse {}
+            class AttachmentRequest {}
+            class AttachmentResponse {}
+        }
+        routers -down-> schemas : использует
+    }
+
+    package repositories {
+        class SqlAlchemyConfessionRepository {}
+        class SqlAlchemyPollRepository {}
+        class SqlAlchemyTagRepository {}
+        class SqlAlchemyCommentRepository {}
+        class SqlAlchemyPublishedRecordRepository {}
+        class SqlAlchemyModerationLogRepository {}
+    }
+
+    package gateways {
+        class TelegramBotGateway {}
+        class LLMModerationGateway {}
+    }
+
+    package models {
+        class ConfessionModel
+        class PollModel
+        class TagModel
+        class CommentModel
+        class PublishedRecordModel
+        class ModerationLogModel
+
+        ConfessionModel --> TagModel : tags
+        ConfessionModel --> PollModel : poll
+        ConfessionModel --> CommentModel : comments
+        ConfessionModel --> PublishedRecordModel : published_record
+        ConfessionModel --> ModerationLogModel : moderation_logs
+        PollModel --> ConfessionModel : confession
+        CommentModel --> ConfessionModel : confession
+        PublishedRecordModel --> ConfessionModel : confession
+        ModerationLogModel --> ConfessionModel : confession
+    }
+
+    package db {
+        class MigrationManager
+    }
+
+    ' Связи в рамках frameworks_and_drivers
+    repositories -down-> models : использует
+    gateways -down-> models : использует
+    db -down-> models : миграции
+    
+    ' Связи с interface_adapters
+    SqlAlchemyConfessionRepository ..|> ConfessionRepositoryProtocol : implements
+    SqlAlchemyPollRepository ..|> PollRepositoryProtocol : implements
+    TelegramBotGateway ..|> TelegramGatewayProtocol : implements
+    LLMModerationGateway ..|> ModerationGatewayProtocol : implements
+    routers --> ConfessionController : вызывает
+}
+
+package interface_adapters {
+    note as adapters_description
+        Слой интерфейсных адаптеров: протоколы репозиториев и гейтвеев, DTO, контроллеры.
+    end note
+
+    ' Протоколы (интерфейсы)
+    interface ConfessionRepositoryProtocol {
+        + save(confession: Confession) : None
+        + get_by_id(id: int) : Confession
+        + list_by_status(status: ConfessionStatus) : List<Confession>
+        + update_status(id: int, status: ConfessionStatus) : None
+    }
+
+    interface PollRepositoryProtocol {
+        + save(poll: Poll) : None
+        + get_by_id(id: int) : Poll
+    }
+
+    interface ModerationGatewayProtocol {
+        + moderate(confession: Confession) : ConfessionStatus
+    }
+
+    interface TelegramGatewayProtocol {
+        + send_confession(confession: Confession) : str
+        + send_poll(poll: Poll) : str
+    }
+
+    ' DTO
+    class ConfessionDTO {
+        + id: int
+        + content: string
+        + status: ConfessionStatus
+        + attachments: List<Attachment>
+        + tags: List<Tag>
+        + poll: Poll [0..1]
+    }
+
+    class PollDTO {
+        + id: int
+        + question: string
+        + options: List<PollOption>
+        + allows_multiple_answers: bool
+        + type: string
+    }
+
+    ' Контроллеры (только сигнатуры)
+    class ConfessionController {
+        + create_confession(dto: ConfessionDTO) : None
+        + moderate_confession(dto: ConfessionDTO) : bool
+        + publish_confession(dto: ConfessionDTO) : None
+    }
+
+    class PollController {
+        + create_poll(dto: PollDTO) : None
+    }
+    
+    ' Связи внутри interface_adapters
+    ConfessionController --> CreateConfessionUseCase : вызывает
+    ConfessionController --> ModerateConfessionUseCase : вызывает
+    ConfessionController --> PublishConfessionUseCase : вызывает
+    PollController --> CreateConfessionUseCase : вызывает
+}
+
+package usecases {
+    note as usecases_description
+        В этом разделе реализуется бизнес-логика приложения.
+        Use Cases взаимодействуют с доменными объектами из слоя Entities.
+    end note
+
+    ' Абстрактный базовый use case
+    abstract class AbstractUseCase {
+        + execute(*args, **kwargs) : Any
+    }
+
+    ' Use case для создания нового признания
+    class CreateConfessionUseCase {
+        - _confession_repository: ConfessionRepositoryProtocol
+        + __init__(confession_repository: ConfessionRepositoryProtocol) : None
+        + execute(confession_dto: ConfessionDTO) : None
+    }
+    note bottom of CreateConfessionUseCase
+        Обрабатывает данные от пользователя, создаёт объект Confession
+        с вложениями и тегами и сохраняет его через репозиторий.
+    end note
+
+    ' Use case для модерации признания
+    class ModerateConfessionUseCase {
+        - _moderation_gateway: ModerationGatewayProtocol
+        - _confession_repository: ConfessionRepositoryProtocol
+        + __init__(moderation_gateway: ModerationGatewayProtocol, confession_repository: ConfessionRepositoryProtocol) : None
+        + execute(confession_dto: ConfessionDTO) : bool
+    }
+    note bottom of ModerateConfessionUseCase
+        Проводит модерацию признания, обновляя его статус (PENDING, APPROVED, REJECTED)
+        с помощью LLM или ручного контроля.
+    end note
+
+    ' Use case для публикации признания в Telegram
+    class PublishConfessionUseCase {
+        - _telegram_gateway: TelegramGatewayProtocol
+        - _confession_repository: ConfessionRepositoryProtocol
+        + __init__(telegram_gateway: TelegramGatewayProtocol, confession_repository: ConfessionRepositoryProtocol) : None
+        + execute(confession_dto: ConfessionDTO) : None
+    }
+    note bottom of PublishConfessionUseCase
+        Отправляет одобренное признание в Telegram-канал через TelegramGateway.
+        Если признание включает опрос, вызывается send_poll, и возвращаемый poll_message_id сохраняется.
+    end note
+
+    AbstractUseCase <|-- CreateConfessionUseCase
+    AbstractUseCase <|-- ModerateConfessionUseCase
+    AbstractUseCase <|-- PublishConfessionUseCase
+    
+    ' Связи с внешними интерфейсами
+    CreateConfessionUseCase *-- "1" ConfessionRepositoryProtocol : _confession_repository
+    PublishConfessionUseCase *-- "1" ConfessionRepositoryProtocol : _confession_repository
+    ModerateConfessionUseCase *-- "1" ModerationGatewayProtocol : _moderation_gateway
+    ModerateConfessionUseCase *-- "1" ConfessionRepositoryProtocol : _confession_repository
+}
+
+package entities {
+    note as entities_description
+        Модель доменных сущностей для ФАЛТ.конф.
+    end note
+
+    enum ConfessionStatus {
+        PENDING
+        APPROVED
+        REJECTED
+        PUBLISHED
+    }
+
+    enum AttachmentType {
+        IMAGE
+        VIDEO
+        AUDIO
+        MUSIC
+        DOCUMENT
+        OTHER
+    }
+
+    class Confession {
+        + id: int
+        + content: string
+        + created_at: datetime
+        + status: ConfessionStatus
+        + attachments: List<Attachment>
+        + tags: List<Tag>
+        + poll: Poll [0..1]           ' Связь с опросом, если он создан
+    }
+
+    class Attachment {
+        + id: int
+        + url: string
+        + type: AttachmentType
+        + uploaded_at: datetime
+        + caption: string [0..1]
+    }
+
+    ' Сущность опроса
+    class Poll {
+        + id: int
+        + question: string              ' Тема опроса (вопрос)
+        + allows_multiple_answers: bool ' Разрешен ли множественный выбор
+        + type: string                  ' Тип опроса: "regular" или "quiz"
+        + correct_option_id: int [0..1]  ' (Опционально) корректный ответ для quiz режима
+        + explanation: string [0..1]     ' (Опционально) пояснение для quiz режима
+        + open_period: int [0..1]        ' (Опционально) период в секундах, в течение которого опрос открыт
+        + poll_message_id: string [0..1] ' ID сообщения с опросом, полученный через Telegram API
+        + created_at: datetime
+        + options: List<PollOption>
+    }
+
+    class PollOption {
+        + id: int
+        + text: string
+        + vote_count: int
+    }
+
+    class ModerationLog {
+        + id: int
+        + confession_id: int
+        + decision: ConfessionStatus
+        + moderator: string
+        + reason: string [0..1]
+        + timestamp: datetime
+    }
+
+    class PublishedRecord {
+        + id: int
+        + confession_id: int
+        + telegram_message_id: string
+        + channel_id: string
+        + published_at: datetime
+        + discussion_thread_id: string [0..1]
+    }
+
+    class Tag {
+        + id: int
+        + name: string
+    }
+
+    class Comment {
+        + id: int
+        + confession_id: int
+        + content: string
+        + created_at: datetime
+        + reply_to: int [0..1] ' ID родительского комментария для вложенности
+    }
+
+    ' Ассоциации:
+    Confession "0..1" --> "1..*" Attachment : содержит
+    Confession "1" --> "0..*" ModerationLog : имеет
+    Confession "1" --> "0..1" PublishedRecord : публикуется
+    Confession "1" --> "0..*" Tag : помечается
+    Confession "1" --> "0..*" Comment : имеет
+    Confession "0..1" --> "0..1" Poll : включает
+    Poll "1" --> "1..*" PollOption : содержит варианты
+}
+
+' Уровневые связи между слоями
+usecases -down----> entities : использует доменные объекты
+interface_adapters -down----> usecases : вызывает use case
+interface_adapters -down----> entities : использует доменные объекты
+frameworks_and_drivers -down----> interface_adapters : реализует протоколы, вызывает контроллеры
+
+@enduml
